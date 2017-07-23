@@ -1,5 +1,9 @@
 # SimpleScraper
 
+
+[![Go Report Card](https://goreportcard.com/badge/github.com/tusing/SimpleScraper)](https://goreportcard.com/report/github.com/tusing/SimpleScraper)
+
+
 SimpleScraper is a tool designed to allow easy scraping of the web with a only a minimal config file. Users can grab snippets ("shards") from website(s) and apply various changes to the resultant string. Users can then combine these shards into what is referred as an "interpolation", and interpolations can be nested as desired.
 
 This is my first application written in Golang.
