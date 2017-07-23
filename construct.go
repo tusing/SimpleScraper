@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"github.com/BurntSushi/toml"
 	"github.com/PuerkitoBio/goquery"
 	"regexp"
@@ -41,6 +42,11 @@ type interpolation struct {
 }
 
 func (config *tomlConfig) initialize() {
+	for shardName, targetShard := range config.Shards {
+		tmpShard := targetShard
+		tmpShard.Name = shardName
+		config.Shards[shardName] = tmpShard
+	}
 	config.ShardRegex = constructTokenRegex(config.DelimitShard[0], config.DelimitShard[1])
 	config.InterpRegex = constructTokenRegex(config.DelimitInterp[0], config.DelimitInterp[1])
 }
@@ -78,38 +84,45 @@ func (targetInterpolation *interpolation) inheritFromInterp(interp interpolation
 	}
 }
 
+func (targetShard *shard) grabShardOverrideURL() (*goquery.Document, error) {
+	var doc *goquery.Document
+	if !validateURL(targetShard.URL) {
+		err := errors.New(`Shard URL override "` + targetShard.URL +
+			`" is not well formed (i.e. beginning with "http[s]://www.")`)
+		return doc, err
+	}
+	return goquery.NewDocument(targetShard.URL)
+}
+
 func (targetShard *shard) populateShard(doc *goquery.Document) string {
 	if targetShard.Override != "" {
 		return runModifications(targetShard.Override, targetShard.Modifications)
 	}
 
-	describeShardError := func(desc string) {
-		log.Error(desc,
-			"\n Shard:", targetShard.Name,
-			"\n URL:", doc.Url.String(),
-			"\n Selector:", targetShard.Selector)
-	}
-
+	var err error
 	if targetShard.URL != "" {
-		if !validateURL(targetShard.URL) {
-			describeShardError(`Shard URL override is not well formed (i.e. beginning with "http[s]://www.")`)
+		if doc, err = targetShard.grabShardOverrideURL(); err != nil {
+			log.Error("Shard", targetShard.Name,
+				"- could not grab shard override URL!\n", err)
+			return ""
 		}
 	}
 
 	var found string
-
 	if targetShard.Attr != "" {
 		var exists bool
 		found, exists = doc.Find(targetShard.Selector).Attr(targetShard.Attr)
 		if !exists {
-			describeShardError("Could not find selector attribute: " + targetShard.Attr)
+			log.Error("Shard", targetShard.Name,
+				"- could not find selector attribute", targetShard.Attr)
 		}
 	} else {
 		found = doc.Find(targetShard.Selector).Text()
 	}
 
 	if found == "" {
-		describeShardError("Could not find anything to populate shard with!")
+		log.Error("Shard", targetShard.Name,
+			"- could not find anything to populate shard with!")
 	}
 
 	return runModifications(found, targetShard.Modifications)

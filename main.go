@@ -18,7 +18,9 @@ func validateURL(url string) bool {
 }
 
 func main() {
-	flags.Parse(&commandLineOpts)
+	if _, err := flags.Parse(&commandLineOpts); err != nil {
+		log.Fatal("Could not parse command-line flags!\n")
+	}
 	logLevel := commandLineOpts.LogLevel
 	url := commandLineOpts.URL
 	configPath := commandLineOpts.ConfigPath
