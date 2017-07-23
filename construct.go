@@ -7,12 +7,11 @@ import (
 	"strings"
 )
 
-func constructConfig(configFilepath string) tomlConfig {
+func mustConstructConfig(configFilepath string) tomlConfig {
 	var config tomlConfig
 	if _, err := toml.DecodeFile(configFilepath, &config); err != nil {
-		log.Error(err)
+		log.Fatal("Could not parse config file!\n", err)
 	}
-
 	return config
 }
 
@@ -42,26 +41,24 @@ type interpolation struct {
 }
 
 func (config *tomlConfig) initialize() {
-	config.parseDelimiters()
-}
-
-func (config *tomlConfig) parseDelimiters() {
-	constructTokenRegex := func(tokenBegin string, tokenEnd string) *regexp.Regexp {
-		re, err := regexp.Compile("[" + tokenBegin + "][^" + tokenBegin + tokenEnd + "]+[" + tokenEnd + "]")
-		if err != nil {
-			log.Error("Could not compile regex for tokens: " + tokenBegin + " and " + tokenEnd)
-			log.Fatal(err)
-		}
-		return re
-	}
-
 	config.ShardRegex = constructTokenRegex(config.DelimitShard[0], config.DelimitShard[1])
 	config.InterpRegex = constructTokenRegex(config.DelimitInterp[0], config.DelimitInterp[1])
 }
 
+func constructTokenRegex(tokenBegin string, tokenEnd string) *regexp.Regexp {
+	re, err := regexp.Compile("[" + tokenBegin + "][^" + tokenBegin + tokenEnd + "]+[" + tokenEnd + "]")
+	if err != nil {
+		log.Error("Could not compile regex for tokens: " + tokenBegin + " and " + tokenEnd)
+		log.Fatal(err)
+	}
+	return re
+}
+
 func runModifications(original string, mods []string) string {
 	modified := []byte(original)
-	for i := 0; i < len(mods); {
+	padding := make([]string, 4-len(mods)%4)
+	mods = append(mods, padding...)
+	for i := 0; i < len(mods); i += 4 {
 		modified = append([]byte(mods[i]), modified...)   // 1. Prepend
 		modified = append(modified, []byte(mods[i+1])...) // 2. Append
 		regex, err := regexp.Compile(mods[i+2])           // 3. Select & 4. Replace
@@ -70,7 +67,6 @@ func runModifications(original string, mods []string) string {
 		}
 		replacement := mods[i+3]
 		modified = regex.ReplaceAll(modified, []byte(replacement))
-		i += 4
 	}
 
 	return string(modified)
@@ -95,8 +91,7 @@ func (targetShard *shard) populateShard(doc *goquery.Document) string {
 	}
 
 	if targetShard.URL != "" {
-		url := targetShard.URL
-		if !validateURL(url) {
+		if !validateURL(targetShard.URL) {
 			describeShardError(`Shard URL override is not well formed (i.e. beginning with "http[s]://www.")`)
 		}
 	}
@@ -177,6 +172,7 @@ func constructInterpolation(url string, interp interpolation, config tomlConfig,
 	siteBody, err := goquery.NewDocument(url)
 	if err != nil {
 		log.Error(err)
+		return ""
 	}
 
 	interpolationBody := interp.Interpolation

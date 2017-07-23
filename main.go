@@ -9,15 +9,12 @@ var commandLineOpts struct {
 	LogLevel              string `short:"l" default:"error" long:"log-level" description:"Log level: <info|notice|warning|error|critical>"`
 	URL                   string `short:"u" required:"true" long:"url" description:"URL to scrape, provides shard REQUESTED_URL"`
 	ConfigPath            string `short:"c" default:"config.toml" long:"config" description:"Location of config file"`
-	InterpolationContains string `short:"i" default:"" default-mask:"-" long:"contains" description:"If multiple interpolations are compatible with your URL, filter by the interpolations containig the given string."`
+	InterpolationContains string `short:"i" default:"" default-mask:"-" long:"contains" description:"If multiple interpolations are compatible with your URL, filter by the interpolations containing the given string."`
 }
 
 func validateURL(url string) bool {
-	validURL, _ := regexp.Compile(`^https{0,1}:\/\/www\.`)
-	if !validURL.Match([]byte(url)) {
-		return false
-	}
-	return true
+	validURL := regexp.MustCompile(`^https{0,1}:\/\/www\.`)
+	return validURL.Match([]byte(url))
 }
 
 func main() {
@@ -28,7 +25,7 @@ func main() {
 	interpContains := commandLineOpts.InterpolationContains
 
 	log = makeLogger("loggerName", parseLogLevel(logLevel))
-	config := constructConfig(configPath)
+	config := mustConstructConfig(configPath)
 	config.initialize()
 
 	if validateURL(url) {
