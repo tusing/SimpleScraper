@@ -85,9 +85,6 @@ selector="#profile_top > a:nth-child(5)"
 attr="href"
 modifications=["https://www.fanfiction.net", "", 'm\.', ""]
 
-[shards.ffn_download]
-selector="document.URL"
-
 [shards.ffn_summary]
 selector="#profile_top > div"
 

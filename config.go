@@ -1,20 +1,27 @@
-package main
+/* Use the provided config file to construct shards and interpolations. */
+
+package SimpleScraper
 
 import (
-	"github.com/BurntSushi/toml"
 	"regexp"
+
+	"github.com/BurntSushi/toml"
 )
 
-func mustConstructConfig(configFilepath string) tomlConfig {
+var config tomlConfig
+
+// MustConstructConfig - uses the config at configFilepath to generate shards and interpolations.
+func MustConstructConfig(configFilepath string) tomlConfig {
 	var config tomlConfig
 	if _, err := toml.DecodeFile(configFilepath, &config); err != nil {
 		log.Fatal("Could not parse config file!\n", err)
 	}
+	config.initialize()
 	return config
 }
 
 type tomlConfig struct {
-	Shards         map[string]shard
+	Shards         map[string]Shard
 	Interpolations map[string]interpolation
 	DelimitShard   []string
 	DelimitInterp  []string
@@ -22,7 +29,8 @@ type tomlConfig struct {
 	InterpRegex    *regexp.Regexp
 }
 
-type shard struct {
+// Shard - elements used in creating interpolations
+type Shard struct {
 	Name          string
 	Modifications []string
 	Override      string

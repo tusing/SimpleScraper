@@ -1,4 +1,4 @@
-package main
+package SimpleScraper
 
 import (
 	"github.com/op/go-logging"

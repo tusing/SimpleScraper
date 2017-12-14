@@ -1,8 +1,10 @@
-package main
+package SimpleScraper
 
 import (
-	"github.com/PuerkitoBio/goquery"
+	"regexp"
 	"strings"
+
+	"github.com/PuerkitoBio/goquery"
 )
 
 func (targetInterpolation *interpolation) inheritFromInterp(interp interpolation) {
@@ -11,17 +13,32 @@ func (targetInterpolation *interpolation) inheritFromInterp(interp interpolation
 	}
 }
 
-func findInterpolation(interp interpolation, potentialInterp []byte, config tomlConfig, url string, tempShards map[string]shard) []byte {
-	targetInterp, ok := config.Interpolations[stripTokenDelimiters(potentialInterp)]
+func validateURL(url string) bool {
+	validURL := regexp.MustCompile(`^https{0,1}:\/\/www\.`)
+	return validURL.Match([]byte(url))
+}
+
+func findInterpolation(interp interpolation, potentialInterp []byte, config tomlConfig, url string, tempShards map[string]Shard) []byte {
+	targetInterp, ok := config.Interpolations[interp.BeginsWith+stripTokenDelimiters(potentialInterp)]
+	if !ok {
+		targetInterp, ok = config.Interpolations[stripTokenDelimiters(potentialInterp)]
+	}
+
 	if !ok {
 		return potentialInterp
 	}
+
 	targetInterp.inheritFromInterp(interp)
 	replacement := constructInterpolation(url, targetInterp, config, tempShards)
 	return validateTokenReplacement(potentialInterp, replacement)
 }
 
-func constructFromURL(url string, config tomlConfig, tempShards map[string]shard, interpContains string) string {
+// ConstructFromURL - Construct output from the given URL
+func ConstructFromURL(url string, tempShards map[string]Shard, interpContains string) string {
+	if !validateURL(url) {
+		log.Fatalf(`Provided URL is not well formed (i.e. beginning with "http[s]://www.")`)
+	}
+
 	var allInterpolations string
 	for interpName, interp := range config.Interpolations {
 		for _, urlSubstring := range interp.URLContains {
@@ -39,7 +56,7 @@ func constructFromURL(url string, config tomlConfig, tempShards map[string]shard
 	return allInterpolations
 }
 
-func constructInterpolation(url string, interp interpolation, config tomlConfig, tempShards map[string]shard) string {
+func constructInterpolation(url string, interp interpolation, config tomlConfig, tempShards map[string]Shard) string {
 	siteBody, err := goquery.NewDocument(url)
 	if err != nil {
 		log.Error(err)
@@ -47,7 +64,7 @@ func constructInterpolation(url string, interp interpolation, config tomlConfig,
 	}
 
 	interpolationBody := interp.Interpolation
-	shardMaps := []map[string]shard{config.Shards, tempShards}
+	shardMaps := []map[string]Shard{config.Shards, tempShards}
 
 	replaceShards := func(potentialShard []byte) []byte {
 		return findShard(potentialShard, interp, shardMaps, siteBody)

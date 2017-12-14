@@ -1,11 +1,12 @@
-package main
+package SimpleScraper
 
 import (
 	"errors"
+
 	"github.com/PuerkitoBio/goquery"
 )
 
-func (targetShard *shard) grabShardOverrideURL() (*goquery.Document, error) {
+func (targetShard *Shard) grabShardOverrideURL() (*goquery.Document, error) {
 	var doc *goquery.Document
 	if !validateURL(targetShard.URL) {
 		err := errors.New(`Shard URL override "` + targetShard.URL +
@@ -15,7 +16,7 @@ func (targetShard *shard) grabShardOverrideURL() (*goquery.Document, error) {
 	return goquery.NewDocument(targetShard.URL)
 }
 
-func findShard(potentialShard []byte, interp interpolation, shardMaps []map[string]shard, siteBody *goquery.Document) []byte {
+func findShard(potentialShard []byte, interp interpolation, shardMaps []map[string]Shard, siteBody *goquery.Document) []byte {
 	for _, shardMap := range shardMaps {
 		shardName := stripTokenDelimiters(potentialShard)
 		resultantShard, ok := shardMap[interp.BeginsWith+shardName]
@@ -30,7 +31,7 @@ func findShard(potentialShard []byte, interp interpolation, shardMaps []map[stri
 	return potentialShard
 }
 
-func (targetShard *shard) populateShard(doc *goquery.Document) string {
+func (targetShard *Shard) populateShard(doc *goquery.Document) string {
 	if targetShard.Override != "" {
 		return runModifications(targetShard.Override, targetShard.Modifications)
 	}
